@@ -2,11 +2,14 @@ import os
 import dpkt
 import socket
 
-def flow_direction(pcap):
+def flow_direction(path):
+    f = open(path, "rb")
+    pcap = dpkt.pcap.Reader(f)
     c2s = []
     for ts, buf in pcap:
         eth = dpkt.ethernet.Ethernet(buf)
         ip = eth.data
+        # ip = dpkt.ip.IP(buf) # 如果是Raw IP Packet，不存在物理层数据，直接读取IP层数据
         trans = ip.data
         src = (ip.src, trans.sport)
         dst = (ip.dst, trans.dport)
@@ -32,9 +35,9 @@ def length_direction_feature(firstN, type, file_name_list):
         print(file_name)
         len_dir = []
         try:
+            c2s = flow_direction(file_path)
             f = open(file_path, "rb")
             pcap = dpkt.pcap.Reader(f)
-            c2s = flow_direction(pcap)
             thr = 0
             for ts, buf in pcap:
                 eth = dpkt.ethernet.Ethernet(buf)
@@ -49,16 +52,19 @@ def length_direction_feature(firstN, type, file_name_list):
                     else:
                         len_dir.append(-len(data))
 
-                    if thr >= firstN:
-                        break
+                    # if thr >= firstN:
+                    #     break
         except Exception as e:
             print(e)
 
         print(len_dir)
+        # brust = []
+        # for pkt_len in len_dir:
+        #     if pkt_len
 
 if __name__ == '__main__':
     data_path = './data'
-    protocol_type = ['smb', 'smtp', 'tls_1.2']
+    protocol_type = ['smb', 'smtp', 'tls1.2']
     firstN = 30
     protocol_dic = {}
     file_name_list = os.listdir(data_path)
@@ -72,5 +78,3 @@ if __name__ == '__main__':
 
     for type in protocol_dic.keys():
         c2s = length_direction_feature(firstN, type, protocol_dic[type])
-
-
