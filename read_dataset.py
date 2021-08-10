@@ -1,6 +1,7 @@
 import os
 import dpkt
 import socket
+import numpy as np
 
 def flow_direction(path):
     f = open(path, "rb")
@@ -24,7 +25,6 @@ def flow_direction(path):
         # print("({0}, {1}), ({2}, {3})".format(socket.inet_ntop(socket.AF_INET, c2s[0][0]), c2s[0][1],
         #                                       socket.inet_ntop(socket.AF_INET, c2s[1][0]), c2s[1][1]))
         break
-
     return c2s
 
 def length_direction_feature(firstN, type, file_name_list):
@@ -33,7 +33,7 @@ def length_direction_feature(firstN, type, file_name_list):
     for file_name in file_name_list:
         file_path = os.path.join('./data', file_name)
         print(file_name)
-        len_dir = []
+        len_list = []
         try:
             c2s = flow_direction(file_path)
             f = open(file_path, "rb")
@@ -48,19 +48,48 @@ def length_direction_feature(firstN, type, file_name_list):
                     thr += 1
                     src = (ip.src, trans.sport)
                     if src == c2s[0]:
-                        len_dir.append(len(data))
+                        len_list.append(len(data))
                     else:
-                        len_dir.append(-len(data))
+                        len_list.append(-len(data))
 
                     # if thr >= firstN:
                     #     break
         except Exception as e:
             print(e)
 
-        print(len_dir)
-        # brust = []
-        # for pkt_len in len_dir:
-        #     if pkt_len
+        # print(len_list)
+
+        state_dir = {}
+        first_len = len_list[0]
+        seq = 1
+        for i in range(1, len(len_list)):
+            if seq not in state_dir.keys():
+                state_dir[seq] = []
+                state_dir[seq].append(first_len)
+            next_len = len_list[i]
+            if first_len * next_len > 0:  # 两个报文长度同方向
+                state_dir[seq].append(next_len)
+                first_len = next_len
+            else:  # 两报文长度不同方向
+                seq += 1
+                first_len = next_len
+                if seq not in state_dir.keys():
+                    state_dir[seq] = []
+                state_dir[seq].append(first_len)
+
+        # for key in state_dir.keys():
+        #     if state_dir[key][0] > 0:
+        #         print("[Info] Fw: ", end='')
+        #     else:
+        #         print('[Info] Bw: ', end='')
+        #     print(state_dir[key])
+
+        interactive_pktlen = []
+        for key in state_dir.keys():
+            interactive_pktlen.append(round(np.mean(state_dir[key]), 2))
+
+        print(interactive_pktlen)
+
 
 if __name__ == '__main__':
     data_path = './data'
